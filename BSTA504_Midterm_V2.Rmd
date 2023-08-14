@@ -23,7 +23,7 @@ library(ggplot2)
 library(gridExtra)
 ```
 
-# Testing GitHub Connection - August 13, 2023
+# Testing GitHub Connection - August 14, 2023
 
 # 1. Define the Question
 
