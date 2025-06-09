@@ -1,8 +1,10 @@
 ---
-title: "BSTA504 Midterm Project"
+title: "Coffee Analysis by Budget"
 author: "Stamatia Vafeas"
 date: "`r Sys.Date()`"
-output: html_document
+output: html_document:
+  toc: true
+  toc_depth: 2
 ---
 
 ```{r setup, include=FALSE}
@@ -22,6 +24,10 @@ library(stringr)
 library(ggplot2)
 library(gridExtra)
 ```
+
+# Background
+
+The first iteration of this project was created for BSTA504 - R Programming in Winter 2023. I am updating this project to show how my skills have futher developed in the last two years. My first goal with this project is to update and improve this project. My second goal is to create an RShiny app so that you can enter a budget range and have a suggested coffee. 
 
 # 1. Define the Question
 
