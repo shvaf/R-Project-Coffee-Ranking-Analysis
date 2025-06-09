@@ -12,43 +12,50 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r libraries, include=FALSE}
-library(tidyverse)
-library(gt)
-library(readxl)
-library(broom)
-library(janitor)
-library(here)
-library(tidyr)
-library(dplyr)
-library(stringr)
-library(ggplot2)
-library(gridExtra)
+
+#consider using the Renv package to lock the package versions in place
+pacman::p_load(
+  tidyverse,
+  gt,
+  readxl,
+  broom,
+  janitor,
+  here,
+  tidyr,
+  dplyr,
+  stringr,
+  ggplot2,
+  gridExtra,
+  kableExtra)
 ```
 
 # Background
 
-The first iteration of this project was created for BSTA504 - R Programming in Winter 2023. I am updating this project to show how my skills have futher developed in the last two years. My first goal with this project is to update and improve this project. My second goal is to create an RShiny app so that you can enter a budget range and have a suggested coffee. 
+The first iteration of this project was created for BSTA504 - R Programming in Winter 2023. I am updating this project to show how my skills have developed in the last two years. My first goal with this project is to update and improve this project. My second goal is to create an RShiny app so that you can enter a budget range and have a suggested coffee. 
 
-# 1. Define the Question
+# Define the Question
 
-Coffee is American's most popular beverage. According to Food Beverage Insider, Americans consume more coffee than tap water (https://www.foodbeverageinsider.com/beverages/coffee-consumption-hits-record-high-us). As a graduate student on a budget, I wanted to answer the question, how can I best spend my coffee dollars? The last bag of coffee I bought was a 12 oz bag of Portland Coffee Roasters, Goose Hollow coffee beans for \$11.99 at Safeway. While this exact blend was not listed on Coffee Review's website, other blends of Portland Coffee Roasters (previously called Portland Roasters, https://www.portlandcoffeeroasters.com/consumer/learn/about-us/mission-history) are listed. For this analysis, I will using the Mocha Java blend, which was rated at 89, as a substitute for Goose Hollow. 
+Coffee is American's most popular beverage. According to Food Beverage Insider, Americans consume more coffee than tap water (https://www.foodbeverageinsider.com/beverages/coffee-consumption-hits-record-high-us). As a budget conscious individual I wanted to answer the question, how can I best spend my coffee dollars? The last bag of coffee I bought was a 12 oz bag of Portland Coffee Roasters, Goose Hollow coffee beans for \$11.99 at Safeway. While this exact blend was not listed on Coffee Review's website, other blends of Portland Coffee Roasters (previously called Portland Roasters) are listed. For this analysis, I will using the Mocha Java blend, which was rated at 89, as a substitute for Goose Hollow. 
 
 In order to answer this question, I used the data from Coffee Review's website (https://www.coffeereview.com/). This website was started in 1997 by two people who were determined to provide a wine style rating to coffee. The data used for this analysis was sourced from (https://www.kaggle.com/datasets/hanifalirsyad/coffee-scrap-coffeereview/versions/2?resource=download&select=coffee_fix.csv) and the file used was coffee_fix.csv. The dataset in question includes multiple currencies and unit of measure. In order to streamline my analysis, I filtered the dataset to included only coffees whose prices were listed in USD.  
 
-# 2. Import Data
+Note: The date range of reviews was April 2017 to April 2018 (double check), updates will include adjustments for inflation. (Including my initial coffee price)
+
+# Import Data
 Prior to importing the data, I looked at the excel sheet to check that there were not any missing lines that needed to be addressed during the import. There were not so I was able to improve the data using a basic read.csv() command.
 ```{r}
 # coffee budget
 budget_per_bag <- 11.99 #cost of 12oz of Portland roasters from Safeway
 
 coffee_data <- read.csv(here("data", "coffee_fix.csv"), na = "NA")
-glimpse(coffee_data)
+coffee_data |> head() |> kable()
 ```
 
 # 3. Overview of ratings
-In order to visualize the range of ratings within this dataset, I split up the ratings into smaller ranges. Using glimpse() below, you can see that the dataset was successful split into the different rating ranges. 
+In order to visualize the range of ratings within this dataset, I split up the ratings into smaller ranges.
+
 ```{r}
-coffee_data <- coffee_data %>% 
+coffee_data <- coffee_data  |>  
   mutate(
     rating_ranges = case_when(
       rating < 80 ~ "<80",
@@ -57,8 +64,11 @@ coffee_data <- coffee_data %>%
       rating >= 90 & rating < 95 ~ "90-94",
       rating >= 95 ~"95 and up"
     )
-  )
-glimpse(coffee_data)
+  ) 
+
+coffee_data$rating_ranges <- factor(coffee_data$rating_ranges)
+
+coffee_data |> count(rating_ranges) |> kable()
 ```
 
 
@@ -74,10 +84,18 @@ ggplot(coffee_data,
 
 In the bar graph below, we can see that the large majority of ratings are above Java Mocha's rating of 89. Using summarize() below, we can see that the range of ratings are from 63 to 98, but the median and mean are both 93 so I am confident that based on this analysis, I'll be able to find a higher rated coffee for the same price. I also looked at the ratings grouped by roast and for whatever reason, the dark roasts are rated the worst based on median and mean. I am surprised to see that. I had assumed that dark roasts were considered better by coffee ~~snobs~~ experts, but based on the values in the table below, it appears that dark roasts are rated differently than light and medium roasts.   
 
+## Density Plot of coffee data
+```{r}
+coffee_data |>
+  ggplot(aes(x = rating)) + 
+  geom_density()+ 
+  theme_dark()
+```
+
 
 ```{r}
 # Range and mean of all coffee ratings
-coffee_data %>% 
+coffee_data |> 
   summarize(minimum_rating = min(rating, na.rm = TRUE),
             maximum_rating = max(rating, na.rm = TRUE),
             mean_rating = round(mean(rating, na.rm = TRUE), digits = 1),
@@ -85,8 +103,8 @@ coffee_data %>%
 ```
 
 ```{r}
-coffee_data %>% 
-  group_by(roast) %>% 
+coffee_data |> 
+  group_by(roast) |> 
   summarize(minimum_rating = min(rating, na.rm = TRUE),
             maximum_rating = max(rating, na.rm = TRUE),
             mean_rating = round(mean(rating, na.rm = TRUE), digits = 0),
@@ -110,10 +128,10 @@ glimpse(coffee_data)
 
 ```{r}
 #cleaning data so that it only considers grams and ounces
-coffee_data <- coffee_data %>% 
+coffee_data <- coffee_data |> 
   filter(
     str_detect(est_price, 'grams|gram|ounces|oz|ounce')
-  ) %>% 
+  ) |> 
   filter(
         !str_detect(name, 'cold brew|Cold Brew')
   )
@@ -127,7 +145,7 @@ Below, I took the est_price and split it at the "\$" into currency and prices. I
 
 ```{r}
 
-coffee_currency <- coffee_data %>% 
+coffee_currency <- coffee_data |> 
   separate( #splitting currency into its own column
     col = est_price,
     into = c("currency","prices"),
@@ -140,8 +158,8 @@ glimpse(coffee_currency)
 ```
 
 ```{r}
-coffee_currency %>%
-  tabyl(currency) %>% gt()
+coffee_currency |>
+  tabyl(currency) |> gt()
 ```
 
 Looking at the tabyl above, I noticed that there are additional currency signs found within the coffee_fix dataset. I am going to filter those out to limit my analysis to just US or USD (United States Dollar) which is the same currency.   
@@ -149,21 +167,21 @@ Looking at the tabyl above, I noticed that there are additional currency signs f
 ```{r}
 
 
-coffee_currency_filter <- coffee_currency %>%
+coffee_currency_filter <- coffee_currency |>
   filter(
       grepl('US', currency) #|
   )
 
 
 
-coffee_currency_filter %>% 
-  group_by(currency) %>% 
+coffee_currency_filter |> 
+  group_by(currency) |> 
   summarise(n = n())
 ```
 
 In the table above, it appears that there are two "US" columns. They likely have whitespace so they are not exactly the same value. At this point, all the prices that remain in the sample set are in USD. Now I am going to split the price columns into numbers and units.
 ```{r}
-coffee_price <- coffee_currency_filter %>% #splitting the prices into price in dollars and units
+coffee_price <- coffee_currency_filter |> #splitting the prices into price in dollars and units
   separate( #splitting price into its own column
     col = prices,
     into = c("price_dollars","unit_size"),
@@ -174,7 +192,7 @@ glimpse(coffee_price)
 
 *unit_size* refers to the amount of coffee sold at the price listed. For some coffees that is 16oz, 120z, 200 grams, etc. Now I'm going to split the unit size between the numbers and the units at the whitespace in between.
 ```{r}
-coffee_price_split <- coffee_price %>% 
+coffee_price_split <- coffee_price |> 
   separate(
     col = unit_size,
     into = c("amount", "unit"),
@@ -185,7 +203,7 @@ glimpse(coffee_price_split)
 
 ```
 ```{r}
-coffee_price_split %>% 
+coffee_price_split |> 
   tabyl(unit)
 ```
 At this point, I am going to split my table into two. One table is going to be for ounces and one is going to be for grams. The table containing the grams will be converted to ounces and below tables will have standardized cost to the cost of 12 ounces of coffee. These tables will be reconnected further down. 
@@ -194,12 +212,12 @@ At this point, I am going to split my table into two. One table is going to be f
 
 
 #removing everything that isn't ounces
-coffee_price_ounces <- coffee_price_split %>%
+coffee_price_ounces <- coffee_price_split |>
   filter(
     unit == "ounces" | unit == "ounces*" | unit == "ounces;"
   )
 
-coffee_price_ounces %>% 
+coffee_price_ounces |> 
   tabyl(unit)
 
 
@@ -207,26 +225,26 @@ coffee_price_ounces %>%
 
 ```{r}
 #filtering to make a table of grams
-coffee_price_grams <- coffee_price_split %>%
+coffee_price_grams <- coffee_price_split |>
   filter(
     unit == "gram" | unit == "grams"
   )
 
-coffee_price_grams %>% 
+coffee_price_grams |> 
   tabyl(unit)
 ```
 
 
 ```{r}
 #calculate the total prices per 12 oz, because that's typically how coffee is sold in the grocery store
-coffee_price_per_ounces <-coffee_price_ounces %>% 
+coffee_price_per_ounces <-coffee_price_ounces |> 
   mutate(
     price_per_12oz = (12*as.numeric(price_dollars)/as.numeric(amount)) 
   )
 
 
-coffee_price_per_ounces %>%
-  summarize(price_dollars,amount,unit, price_per_12oz) %>% gt_preview(top_n = 5, bottom_n = 5)
+coffee_price_per_ounces |>
+  summarize(price_dollars,amount,unit, price_per_12oz) |> gt_preview(top_n = 5, bottom_n = 5)
 
 ```
 When converting grams to ounces, I used the following formula:
@@ -236,14 +254,14 @@ $$
 Data was transformed below to make the characters numeric. 
 ```{r}
 #converting grams to ounces then calculating the total prices per 12 oz
-coffee_price_per_ounces_from_grams <-coffee_price_grams %>% 
+coffee_price_per_ounces_from_grams <-coffee_price_grams |> 
   mutate(
     price_per_12oz = ((12*as.numeric(gsub(",","", price_dollars)))/(as.numeric(amount)*0.035274)) #gsub is used because some of the prices included commas. 
   )
 
 
-coffee_price_per_ounces_from_grams %>%
-  summarize(price_dollars,amount,unit, price_per_12oz) %>% gt_preview(top_n = 5, bottom_n = 5)
+coffee_price_per_ounces_from_grams |>
+  summarize(price_dollars,amount,unit, price_per_12oz) |> gt_preview(top_n = 5, bottom_n = 5)
 ```
 
 Now that the prices have been standardized, I am reconnecting the data sets.
@@ -256,35 +274,35 @@ glimpse(coffee_data_standardized)
 ```
 You can see in the summary below that the datasets now contain both grams and ounces in the units with a columns labeled 'price_per_12oz'.
 ```{r}
-coffee_data_standardized %>%
-  summarize(name,roaster,price_dollars,amount,unit, price_per_12oz) %>%
-  arrange(desc(price_per_12oz)) %>% gt_preview(top_n = 5, bottom_n = 5)
+coffee_data_standardized |>
+  summarize(name,roaster,price_dollars,amount,unit, price_per_12oz) |>
+  arrange(desc(price_per_12oz)) |> gt_preview(top_n = 5, bottom_n = 5)
 ```
 
 
 #5. Visualizing and Summarizing the Data
 ```{r}
 #calling my coffee budget from the beginning, split the table so that only coffees within my budget are in it and those with 
-coffees_within_budget <- coffee_data_standardized %>% 
+coffees_within_budget <- coffee_data_standardized |> 
   arrange(
     rating
-  ) %>% 
+  ) |> 
   filter(
     price_per_12oz <= budget_per_bag &
       rating > 89
   )
 
 #for box plot below
-coffees_within_budget_unrated <- coffee_data_standardized %>% 
+coffees_within_budget_unrated <- coffee_data_standardized |> 
   arrange(
     rating
-  ) %>% 
+  ) |> 
   filter(
     price_per_12oz <= budget_per_bag
   )
 
 
-coffees_within_budget %>% 
+coffees_within_budget |> 
   tabyl(rating)
 
 ```
@@ -310,7 +328,7 @@ I created a scatterplot to have a visual representation of the coffee ratings an
 
 ```{r}
 rating_levels = c("Lower", "Same", "Better")
-coffees_within_budget_unrated <- coffees_within_budget_unrated %>% 
+coffees_within_budget_unrated <- coffees_within_budget_unrated |> 
   mutate(
     rating_ranges = case_when(
       rating < 89 ~ "Lower",
@@ -318,7 +336,7 @@ coffees_within_budget_unrated <- coffees_within_budget_unrated %>%
       rating > 89 ~ "Better"
     ),
     rating_ranges = factor(rating_ranges, rating_levels)
-    # ) %>%
+    # ) |>
     #   mutate(
     #     rating_ranges = factor(rating_ranges, rating_levels),
     #     rating_ranges = fct_reorder(rating_ranges, rating_levels)
@@ -341,24 +359,24 @@ To see how the coffees within my budget were rated in comparison to Java Mocha, 
 #Pull the coffees from this group with the highest ratings
 final <- subset(coffees_within_budget, rating == max(rating))
 
-final %>%
-  summarize(roaster, name, rating, location, origin, roast, price_per_12oz, review_date) %>% gt_preview( top_n = 5, bottom_n = 5)
+final |>
+  summarize(roaster, name, rating, location, origin, roast, price_per_12oz, review_date) |> gt_preview( top_n = 5, bottom_n = 5)
 ```
 
 
 For my own curiosity, I increased my coffee budget and re-ran my analysis to see if I would be able find to find a significantly better coffee by spend 4 more dollars which would make my coffee budget $\$ 15.99$.
 
 ```{r}
-coffees_within_higher_budget <- coffee_price_per_ounces %>% 
+coffees_within_higher_budget <- coffee_price_per_ounces |> 
   arrange(
     rating
-  ) %>% 
+  ) |> 
   filter(
     price_per_12oz <= (budget_per_bag + 4) &
       rating > 89
   )
 
-coffees_within_higher_budget %>% 
+coffees_within_higher_budget |> 
   tabyl(rating)
 ```
 
@@ -366,8 +384,8 @@ coffees_within_higher_budget %>%
 
 final2 <- subset(coffees_within_higher_budget, rating == max(rating))
 
-final2 %>%
-  summarize(roaster, name, rating, location, origin, roast, price_per_12oz, review_date) %>% gt()
+final2 |>
+  summarize(roaster, name, rating, location, origin, roast, price_per_12oz, review_date) |> gt()
 ```
 
 By adding just 4 dollars to my coffee budget, I am able to choose from 250 coffees that are rated above 90 and 2 of which that are rated at 96. 
